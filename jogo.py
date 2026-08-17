@@ -1,122 +1,280 @@
-import random
-from typing import Dict, Optional
+"""Snakes and Ladders Monte Carlo simulation -- Physa technical case.
 
-# --- 1. O TABULEIRO ---
+Assumptions
+-----------
+- 6x6 serpentine board, squares 1..36. Both players start on square 1.
+- A player wins on `position >= 36`, checked right after the die move.
+- No cascading: the landing square transports once, and that is final.
+  The win check is re-run after a ladder, since a ladder may reach the end.
+- `snakes_hit` counts snakes actually slid down; immunity does not count.
+- Players never interact: two parallel solo races, first to finish wins.
+"""
+
+from __future__ import annotations
+
+import random
+from dataclasses import dataclass
+
+# One base seed per scenario, deliberately distinct: the scenarios consume
+# randomness at different points, so sharing streams buys nothing.
+SEEDS: dict[str, int] = {
+    "q1_baseline": 1000,
+    "q2_snakes": 2000,
+    "q3_ladder_50": 3000,
+    "q4_start_sweep": 4000,
+    "q5_immunity": 5000,
+    "solo_reference": 9000,
+}
+
+
+@dataclass(frozen=True)
 class Board:
-    def __init__(self, size: int, snakes: Dict[int, int], ladders: Dict[int, int]):
-        self.size = size
-        self.snakes = snakes
-        self.ladders = ladders
+    """Static map of the game: size, snake heads and ladder bases."""
+
+    size: int
+    snakes: dict[int, int]
+    ladders: dict[int, int]
 
     @classmethod
-    def create_physa_test_board(cls) -> 'Board':
-        board_size = 36
-        ladders_config = {3: 16, 5: 7, 15: 25, 18: 20, 21: 32}
-        snakes_config = {12: 2, 14: 11, 17: 4, 31: 19, 35: 22}
-        return cls(size=board_size, snakes=snakes_config, ladders=ladders_config)
-
-    def get_ladder_destination(self, position: int) -> Optional[int]:
-        return self.ladders.get(position)
-
-    def get_snake_destination(self, position: int) -> Optional[int]:
-        return self.snakes.get(position)
+    def create_physa_test_board(cls) -> Board:
+        """Builds the board given in the assignment."""
+        return cls(
+            size=36,
+            ladders={3: 16, 5: 7, 15: 25, 18: 20, 21: 32},
+            snakes={12: 2, 14: 11, 17: 4, 31: 19, 35: 22},
+        )
 
 
-# --- 2. O JOGADOR ---
+@dataclass(frozen=True)
+class GameRules:
+    """Scenario configuration. Each question is one instance of this class.
+
+    Q1/Q2: GameRules()                     Q4: GameRules(start_positions=(1, k))
+    Q3:    GameRules(ladder_success_prob=0.5)
+    Q5:    GameRules(immunities=(0, 1))    solo: start_positions=(1,), immunities=(0,)
+    """
+
+    start_positions: tuple[int, ...] = (1, 1)
+    ladder_success_prob: float = 1.0
+    immunities: tuple[int, ...] = (0, 0)
+    dice_sides: int = 6
+
+    def __post_init__(self) -> None:
+        if len(self.start_positions) != len(self.immunities):
+            raise ValueError(
+                "start_positions and immunities must have the same length "
+                f"(got {len(self.start_positions)} and {len(self.immunities)})."
+            )
+
+    @property
+    def n_players(self) -> int:
+        return len(self.start_positions)
+
+
 class Player:
-    def __init__(self, name: str, start_position: int = 1, immunities: int = 0):
+    """Mutable state of one player during a single game."""
+
+    def __init__(self, name: str, start_position: int, immunities: int) -> None:
         self.name = name
-        self.position = start_position
-        self.snakes_encountered = 0
-        self.immunities = immunities
+        self.start_position = start_position
+        self.initial_immunities = immunities
+        self.reset()
+
+    def reset(self) -> None:
+        """Restores the starting state, so one object can play many games."""
+        self.position = self.start_position
         self.dice_rolls = 0
+        self.snakes_hit = 0
+        self.ladders_climbed = 0
+        self.immunities_left = self.initial_immunities
 
 
-# --- 3. O JUIZ (MOTOR DE SIMULAÇÃO) ---
-class GameSimulation:
-    def __init__(self, board: Board, players: list, ladder_chance: float = 1.0):
+@dataclass(frozen=True)
+class GameResult:
+    """Immutable summary of one finished game."""
+
+    winner_index: int
+    total_rolls: int
+    rolls_per_player: tuple[int, ...]
+    snakes_per_player: tuple[int, ...]
+    ladders_per_player: tuple[int, ...]
+
+    @property
+    def n_players(self) -> int:
+        return len(self.rolls_per_player)
+
+    @property
+    def total_snakes(self) -> int:
+        return sum(self.snakes_per_player)
+
+    @property
+    def total_ladders(self) -> int:
+        return sum(self.ladders_per_player)
+
+    def check_turn_order_invariant(self) -> None:
+        """Roll number r always belongs to player (r-1) % N, and the game stops
+        on the winning roll -- so total_rolls alone determines the winner."""
+        expected = (self.total_rolls - 1) % self.n_players
+        assert expected == self.winner_index, (
+            f"Turn-order invariant violated: total_rolls={self.total_rolls}, "
+            f"expected winner {expected}, got {self.winner_index}."
+        )
+
+
+class GameEngine:
+    """Applies the rules and runs games to completion.
+
+    Owns its random source instead of the `random` module globals, so results
+    do not depend on execution order and any game can be reproduced by seed.
+    """
+
+    def __init__(
+        self, board: Board, rules: GameRules, rng: random.Random | None = None
+    ) -> None:
         self.board = board
-        self.players = players
-        self.ladder_chance = ladder_chance
-        self.winner = None
+        self.rules = rules
+        self.rng = rng if rng is not None else random.Random()
+        self.players = [
+            Player(f"Player {i + 1}", start, immunity)
+            for i, (start, immunity) in enumerate(
+                zip(rules.start_positions, rules.immunities)
+            )
+        ]
 
-    def roll_die(self) -> int:
-        return random.randint(1, 6)
+    def play_full_game(self, verbose: bool = False) -> GameResult:
+        """Resets state, plays one game and returns its summary."""
+        for player in self.players:
+            player.reset()
 
-    def play_turn(self, player: Player, verbose: bool = False) -> bool:
-        start_pos = player.position
-        roll = self.roll_die()
+        # Termination is guaranteed: every roll advances at least one square
+        # and every snake lands on a square from which the end is reachable.
+        while True:
+            for index, player in enumerate(self.players):
+                if self._play_turn(player, verbose):
+                    return GameResult(
+                        winner_index=index,
+                        total_rolls=sum(p.dice_rolls for p in self.players),
+                        rolls_per_player=tuple(p.dice_rolls for p in self.players),
+                        snakes_per_player=tuple(p.snakes_hit for p in self.players),
+                        ladders_per_player=tuple(
+                            p.ladders_climbed for p in self.players
+                        ),
+                    )
+
+    def _play_turn(self, player: Player, verbose: bool) -> bool:
+        """Plays one turn. Returns True if the player won."""
+        origin = player.position
+        roll = self.rng.randint(1, self.rules.dice_sides)
         player.dice_rolls += 1
         player.position += roll
-        
-        if verbose:
-            print(f"[{player.name}] Estava na casa {start_pos}, rolou {roll} e foi para a casa {player.position}.")
 
-        # Verifica vitória antes de checar cobras/escadas
+        if verbose:
+            print(f"[{player.name}] {origin} + {roll} -> {player.position}")
+
         if player.position >= self.board.size:
             if verbose:
-                print(f"🏆 {player.name} alcançou a casa {player.position} e VENCEU O JOGO!")
+                print(f"    WIN -- {player.name} reached the end.")
             return True
 
-        # Checa Escadas
-        ladder_dest = self.board.get_ladder_destination(player.position)
-        if ladder_dest is not None:
-            if random.random() <= self.ladder_chance:
+        # A square is either a ladder base or a snake head, never both:
+        # the elif makes a ladder-into-snake cascade impossible by construction.
+        ladder = self.board.ladders.get(player.position)
+        snake = self.board.snakes.get(player.position)
+
+        if ladder is not None:
+            # random() is in [0, 1), so prob 1.0 always succeeds.
+            if self.rng.random() < self.rules.ladder_success_prob:
                 if verbose:
-                    print(f"   ⬆️  ESCALADA! {player.name} subiu pela escada da casa {player.position} para a {ladder_dest}.")
-                player.position = ladder_dest
+                    print(f"    LADDER -- {player.position} -> {ladder}")
+                player.position = ladder
+                player.ladders_climbed += 1
+                if player.position >= self.board.size:
+                    if verbose:
+                        print(f"    WIN -- {player.name} reached the end.")
+                    return True
+            elif verbose:
+                print(f"    LADDER FAILED -- stays on {player.position}")
+
+        elif snake is not None:
+            if player.immunities_left > 0:
+                player.immunities_left -= 1
+                if verbose:
+                    print(f"    IMMUNITY -- snake on {player.position} ignored")
             else:
                 if verbose:
-                    print(f"   ❌ ESCALADA FALHOU! {player.name} tentou subir a escada na casa {player.position}, mas não conseguiu.")
-
-        # Checa Cobras
-        snake_dest = self.board.get_snake_destination(player.position)
-        if snake_dest is not None:
-            if player.immunities > 0:
-                player.immunities -= 1
-                if verbose:
-                    print(f"   🛡️  IMUNIDADE! {player.name} parou na cabeça da cobra na casa {player.position}, mas usou imunidade e não caiu.")
-            else:
-                if verbose:
-                    print(f"   🐍 COBRA! {player.name} caiu na cobra da casa {player.position} e escorregou para a {snake_dest}.")
-                player.position = snake_dest
-                player.snakes_encountered += 1
-
-        if verbose:
-            print(f"   📍 Fim do turno de {player.name}: Casa final = {player.position}\n")
+                    print(f"    SNAKE -- {player.position} -> {snake}")
+                player.position = snake
+                player.snakes_hit += 1
 
         return False
 
-    def play_full_game(self, verbose: bool = False) -> str:
-        game_over = False
-        
-        if verbose:
-            print("========================================")
-            print("🏁 INICIANDO NOVA PARTIDA DE TESTE 🏁")
-            print("========================================\n")
 
-        while not game_over:
-            for player in self.players:
-                has_won = self.play_turn(player, verbose)
-                if has_won:
-                    self.winner = player.name
-                    game_over = True
-                    break
-                    
-        return self.winner
+class ExperimentRunner:
+    """Runs a scenario N times, each game with its own stream derived from
+    `seed`, so results never depend on execution order.
+
+    If `seed` is omitted, one is drawn at random and stored in `self.seed`:
+    the run is random, but still reproducible after the fact by passing that
+    value back in.
+    """
+
+    def __init__(
+        self, board: Board, rules: GameRules, seed: int | None = None
+    ) -> None:
+        self.board = board
+        self.rules = rules
+        self.seed = seed if seed is not None else random.Random().randrange(2**32)
+
+    def run(self, n_games: int, validate: bool = True) -> list[GameResult]:
+        """Simulates n_games independent games."""
+        results = []
+        for i in range(n_games):
+            # Composite seed rather than `seed + i`, so the seed ranges of two
+            # scenarios can never overlap and share games.
+            rng = random.Random(f"{self.seed}:{i}")
+            result = GameEngine(self.board, self.rules, rng).play_full_game()
+            if validate:
+                result.check_turn_order_invariant()
+            results.append(result)
+        return results
+
+    @staticmethod
+    def to_dataframe(results: list[GameResult]):
+        """Converts results into a DataFrame, one row per game.
+
+        pandas is imported here so the simulation core stays dependency-free.
+        """
+        import pandas as pd
+
+        rows = []
+        for i, r in enumerate(results):
+            row = {
+                "game_index": i,
+                "winner_index": r.winner_index,
+                "total_rolls": r.total_rolls,
+                "total_snakes": r.total_snakes,
+                "total_ladders": r.total_ladders,
+            }
+            for p in range(r.n_players):
+                row[f"p{p + 1}_rolls"] = r.rolls_per_player[p]
+                row[f"p{p + 1}_snakes"] = r.snakes_per_player[p]
+                row[f"p{p + 1}_ladders"] = r.ladders_per_player[p]
+            rows.append(row)
+        return pd.DataFrame(rows)
 
 
-# --- 4. EXECUTANDO UMA ÚNICA PARTIDA COM LOGS ---
 if __name__ == "__main__":
-    # 1. Cria o tabuleiro da Physa
-    meu_tabuleiro = Board.create_physa_test_board()
-    
-    # 2. Cria os dois jogadores começando na casa 1
-    jogador1 = Player(name="Jogador 1", start_position=1)
-    jogador2 = Player(name="Jogador 2", start_position=1)
-    
-    # 3. Cria o Juiz passando o tabuleiro e os jogadores
-    juiz = GameSimulation(board=meu_tabuleiro, players=[jogador1, jogador2])
-    
-    # 4. Inicia o jogo com verbose=True para ver os prints
-    vencedor = juiz.play_full_game(verbose=True)
+    board = Board.create_physa_test_board()
+
+    # One narrated game as a visual check that the rules behave correctly.
+    GameEngine(board, GameRules(), rng=random.Random(7)).play_full_game(verbose=True)
+
+    # Baseline smoke test. Omit the seed for a random run: the drawn seed is
+    # kept in runner.seed, so the run stays reproducible after the fact.
+    runner = ExperimentRunner(board, GameRules())
+    results = runner.run(100_000)
+    n = len(results)
+    print(f"\n--- (seed={runner.seed}) ---")
+    print(f"P(Player 1 wins) : {sum(r.winner_index == 0 for r in results) / n:.4f}")
+    print(f"mean total rolls : {sum(r.total_rolls for r in results) / n:.4f}")
+    print(f"mean total snakes: {sum(r.total_snakes for r in results) / n:.4f}")
