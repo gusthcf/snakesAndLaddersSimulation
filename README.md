@@ -24,6 +24,7 @@ Todos os valores acompanham intervalo de confiança de 95%. A análise completa,
 | `analysis.py` | Agregação, intervalos de confiança e as cinco respostas |
 | `analysis.ipynb` | Notebook com gráficos e narrativa |
 | `analysis.html` | O notebook exportado, para leitura sem executar nada |
+| `board.jpg` | Imagem representando o tabuleiro |
 
 As dependências apontam para dentro: o motor não conhece a camada de análise, e a análise não conhece as engrenagens do motor. O núcleo roda sem pandas.
 
