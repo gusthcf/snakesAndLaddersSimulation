@@ -73,7 +73,6 @@ python snakes_and_ladders.py
 - Vitória ao **atingir ou ultrapassar** a casa 36, verificada logo após o lançamento do dado.
 - **Sem encadeamento**: a casa em que se cai transporta uma única vez.
 - A casa inicial **não é "pisada"** — quem começa na base de uma escada não sobe por ela.
-- Cobras neutralizadas por imunidade não entram na contagem da Pergunta 2.
 - Os jogadores não interagem: são duas corridas solo paralelas.
 - "Lançamentos para completar um jogo" (Pergunta 3) é o total somando os dois jogadores. A leitura por jogador está reportada como sensibilidade.
 
