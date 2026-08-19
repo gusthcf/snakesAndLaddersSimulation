@@ -271,10 +271,10 @@ if __name__ == "__main__":
 
     # Baseline smoke test. Omit the seed for a random run: the drawn seed is
     # kept in runner.seed, so the run stays reproducible after the fact.
-    runner = ExperimentRunner(board, GameRules())
-    results = runner.run(100_000)
+    runner = ExperimentRunner(board, GameRules(), SEEDS["q1_baseline"])
+    results = runner.run(10_000)
     n = len(results)
-    print(f"\n--- (seed={runner.seed}) ---")
+    print(f"\n--- baseline, 10,000 games (seed={runner.seed}) ---")
     print(f"P(Player 1 wins) : {sum(r.winner_index == 0 for r in results) / n:.4f}")
     print(f"mean total rolls : {sum(r.total_rolls for r in results) / n:.4f}")
     print(f"mean total snakes: {sum(r.total_snakes for r in results) / n:.4f}")
