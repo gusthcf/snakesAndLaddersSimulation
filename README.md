@@ -1,6 +1,4 @@
-# Cobras e Escadas — Simulação de Monte Carlo
-
-Case técnico Physa. Simulação de 10.000 jogos para responder cinco perguntas de probabilidade sobre o tabuleiro do enunciado.
+# Snakes and Ladders - case Physa
 
 ---
 
