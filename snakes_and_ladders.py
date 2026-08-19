@@ -22,6 +22,7 @@ SEEDS: dict[str, int] = {
     "q2_snakes": 2000,
     "q3_ladder_50": 3000,
     "q4_start_sweep": 4000,
+    "q4_refine": 4500,
     "q5_immunity": 5000,
     "solo_reference": 9000,
 }
