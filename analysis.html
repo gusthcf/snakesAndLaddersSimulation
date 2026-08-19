@@ -8083,7 +8083,7 @@ Efeito: +18.6% mais longo
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h2 id="Voc%C3%AA-decide-fazer-experimentos-para-que-os-jogadores-tenham-aproximadamente-chances-iguais-de-vencerem-o-jogo.-Voc%C3%AA-faz-isso-alterando-a-casa-em-que-o-Jogador-2-come%C3%A7a.-Qual-casa-deveria-ser-a-nova-posi%C3%A7%C3%A3o-inicial-do-Jogador-2-para-que-as-chances-de-vit%C3%B3ria-dos-jogadores-sejam-aproximadamente-iguais?">Você decide fazer experimentos para que os jogadores tenham aproximadamente chances iguais de vencerem o jogo. Você faz isso alterando a casa em que o Jogador 2 começa. Qual casa deveria ser a nova posição inicial do Jogador 2 para que as chances de vitória dos jogadores sejam aproximadamente iguais?<a class="anchor-link" href="#Voc%C3%AA-decide-fazer-experimentos-para-que-os-jogadores-tenham-aproximadamente-chances-iguais-de-vencerem-o-jogo.-Voc%C3%AA-faz-isso-alterando-a-casa-em-que-o-Jogador-2-come%C3%A7a.-Qual-casa-deveria-ser-a-nova-posi%C3%A7%C3%A3o-inicial-do-Jogador-2-para-que-as-chances-de-vit%C3%B3ria-dos-jogadores-sejam-aproximadamente-iguais?">¶</a></h2>
+<h2 id="Pergunta-4-%E2%80%94-Voc%C3%AA-decide-fazer-experimentos-para-que-os-jogadores-tenham-aproximadamente-chances-iguais-de-vencerem-o-jogo.-Voc%C3%AA-faz-isso-alterando-a-casa-em-que-o-Jogador-2-come%C3%A7a.-Qual-casa-deveria-ser-a-nova-posi%C3%A7%C3%A3o-inicial-do-Jogador-2-para-que-as-chances-de-vit%C3%B3ria-dos-jogadores-sejam-aproximadamente-iguais?">Pergunta 4 — Você decide fazer experimentos para que os jogadores tenham aproximadamente chances iguais de vencerem o jogo. Você faz isso alterando a casa em que o Jogador 2 começa. Qual casa deveria ser a nova posição inicial do Jogador 2 para que as chances de vitória dos jogadores sejam aproximadamente iguais?<a class="anchor-link" href="#Pergunta-4-%E2%80%94-Voc%C3%AA-decide-fazer-experimentos-para-que-os-jogadores-tenham-aproximadamente-chances-iguais-de-vencerem-o-jogo.-Voc%C3%AA-faz-isso-alterando-a-casa-em-que-o-Jogador-2-come%C3%A7a.-Qual-casa-deveria-ser-a-nova-posi%C3%A7%C3%A3o-inicial-do-Jogador-2-para-que-as-chances-de-vit%C3%B3ria-dos-jogadores-sejam-aproximadamente-iguais?">¶</a></h2>
 </div>
 </div>
 </div>
@@ -8093,9 +8093,9 @@ Efeito: +18.6% mais longo
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><strong>Estratégia em duas etapas.</strong> Com 10.000 jogos, o intervalo de confiança é de ±1,0 p.p. — maior que a diferença entre casas vizinhas. Ordenar as candidatas nessa resolução seria ordenar ruído. Por isso:</p>
+<p><strong>Estratégia em duas etapas.</strong> Com 10.000 jogos, o intervalo de confiança é de ±1,0 p.p. — maior que a diferença entre casas vizinhas. Por isso:</p>
 <ol>
-<li><strong>Varredura:</strong> testa as casas uma a uma a partir da casa 1 e para algumas casas depois que o Jogador 1 cai abaixo de 45%. A margem de paciência existe porque a curva <strong>não é monótona</strong>: cabeças de cobra (12, 14, 17) são casas ruins para começar e bases de escada valem mais do que o número sugere.</li>
+<li><strong>Varredura:</strong> testa as casas uma a uma a partir da casa 1 e para algumas casas depois que a probabilidade do jogador 1 começa a cair abaixo de 45%. A margem de paciência existe porque a curva <strong>não é monótona</strong>: como a casa inicial não é "pisada", o que muda de uma casa para outra é o conjunto de escadas e cobras que entra e sai do alcance dos seis números seguintes.</li>
 <li><strong>Refino:</strong> as três casas mais próximas de 50% são re-executadas com 100.000 jogos, reduzindo o intervalo para ±0,3 p.p.</li>
 </ol>
 </div>
@@ -8151,9 +8151,9 @@ Resposta: casa 7 (49.7% +- 0.3% p.p.)
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><strong>Leitura do gráfico.</strong> A tendência geral é de queda — quanto mais à frente o Jogador 2 começa, menos o Jogador 1 vence. Mas há desvios importantes, oque muda é <strong>o conjunto de casas ao alcance dos seis números seguintes</strong>.</p>
+<p><strong>Análise:</strong> A tendência geral é de queda — quanto mais à frente o Jogador 2 começa, menos o Jogador 1 vence. Mas há desvios importantes, o que muda é <strong>o conjunto de casas ao alcance dos seis números seguintes</strong>.</p>
 <ul>
-<li><strong>Casa 3 sobe para 54,2%.</strong> Começando ali, o Jogador 2 perde a possibilidade de cair na escada 3→16, a maior do tabuleiro. Da casa 2 ele ainda pode pisar nela.</li>
+<li><strong>Casa 3 sobe P(J1) para 54,2%.</strong> Começando ali, o Jogador 2 perde a possibilidade de cair na escada 3→16, a maior do tabuleiro. Da casa 2 ele ainda pode pisar nela.</li>
 <li><strong>Casa 11 (43,7%) é melhor para o J1 que a casa 10 (42,9%).</strong> Da casa 11 o Jogador 2 alcança a casa 17, cabeça de cobra que devolve 13 casas — exposição que não existe partindo da casa 10.</li>
 </ul>
 <p>É essa não-monotonicidade que justifica varrer as casas com margem de tolerância, em vez de parar no primeiro cruzamento de 50%.</p>
@@ -8178,7 +8178,7 @@ Resposta: casa 7 (49.7% +- 0.3% p.p.)
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Com 10.000 jogos (pontos cinza), os intervalos das casas 7 e 8 se sobrepõem quase por completo — a essa resolução, a ordem entre elas é ruído, e a varredura chegou a apontar a casa 8. Com 100.000 jogos os intervalos se separam e a casa 7 emerge como a mais próxima do equilíbrio.</p>
+<p>Com 10.000 jogos (pontos cinza), os intervalos das casas 7 e 8 se sobrepõem quase por completo e a varredura chegou a apontar a casa 8. Com 100.000 jogos os intervalos se separam e a casa 7 emerge como a mais próxima do equilíbrio.</p>
 </div>
 </div>
 </div>
