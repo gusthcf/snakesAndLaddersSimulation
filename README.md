@@ -1,4 +1,4 @@
-# Snakes and Ladders - case Physa
+# Snakes and Ladders
 
 ---
 
